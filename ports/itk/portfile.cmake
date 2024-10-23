@@ -3,38 +3,38 @@ vcpkg_buildpath_length_warning(37)
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO InsightSoftwareConsortium/ITK
-    REF d3286c9cc04ba16cc8f73de9a98fbcd7c02f3c7b
-    SHA512 c358449870d580aeb10e32f8be0ca39e8a76d8dc06fda973788fafb5971333e546611c399190be49d40f5f3c18a1105d9699eef271a560aff25ce168a396926e
+    REF "v${VERSION}"
+    SHA512 3a98ececf258aac545f094dd3e97918c93cc82bc623ddf793c4bf0162ab06c83fbfd4d08130bdec6e617bda85dd17225488bc1394bc91b17f1232126a5d990db
     HEAD_REF master
     PATCHES
-        hdf5.patch
         double-conversion.patch
         openjpeg.patch
         openjpeg2.patch
         var_libraries.patch
         wrapping.patch
-        python_gpu_wrapping.patch
         opencl.patch
-        cufftw.patch
         use-the-lrintf-intrinsic.patch
+        dont-build-gtest.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
-    "vtk"          Module_ITKVtkGlue
-    "cuda"         Module_ITKCudaCommon # Requires RTK?
-    #"cuda"         CUDA_HAVE_GPU   # Automatically set by FindCUDA?
-    "cufftw"       ITK_USE_CUFFTW
-    "opencl"       ITK_USE_GPU
-    "tbb"          Module_ITKTBB
-    "rtk"          Module_RTK
-    "tools"        RTK_BUILD_APPLICATIONS
-    # There are a lot of more (remote) modules and options in ITK
-    # feel free to add those as a feature
+    FEATURES
+        "vtk"          Module_ITKVtkGlue
+        "cuda"         Module_CudaCommon # Requires RTK?
+        #"cuda"         CUDA_HAVE_GPU   # Automatically set by FindCUDA?
+        "cufftw"       ITK_USE_CUFFTW
+        "opencl"       ITK_USE_GPU
+        "tbb"          Module_ITKTBB
+        "rtk"          Module_RTK
+        "tools"        RTK_BUILD_APPLICATIONS
+        "opencv"       Module_ITKVideoBridgeOpenCV
+        # There are a lot of more (remote) modules and options in ITK
+        # feel free to add those as a feature
 )
 
 if("cufftw" IN_LIST FEATURES)
     # Alternativly set CUFFT_LIB and CUFFTW_LIB
-    if(WIN32)
+    if(VCPKG_TARGET_IS_WINDOWS)
         file(TO_CMAKE_PATH "$ENV{CUDA_PATH}" CUDA_PATH)
         set(CUDA_LIB_PATH "${CUDA_PATH}")
 
@@ -110,6 +110,22 @@ if("python" IN_LIST FEATURES)
         )
     #ITK_PYTHON_SITE_PACKAGES_SUFFIX should be set to the install dir of the site-packages within vcpkg
 endif()
+if("opencv" IN_LIST FEATURES)
+    message(STATUS "${PORT} includes the ITKVideoBridgeOpenCV")
+    list(APPEND ADDITIONAL_OPTIONS
+        -DModule_ITKVideoBridgeOpenCV:BOOL=ON
+        )
+endif()
+if(VCPKG_TARGET_IS_WINDOWS)
+    if (VCPKG_CRT_LINKAGE STREQUAL static)
+        set(STATIC_CRT_LNK ON)
+    else()
+        set(STATIC_CRT_LNK OFF)
+    endif()
+    list(APPEND ADDITIONAL_OPTIONS
+        -DITK_MSVC_STATIC_RUNTIME_LIBRARY=${STATIC_CRT_LNK}
+        )
+endif()
 
 set(USE_64BITS_IDS OFF)
 if (VCPKG_TARGET_ARCHITECTURE STREQUAL x64 OR VCPKG_TARGET_ARCHITECTURE STREQUAL arm64)
@@ -117,9 +133,8 @@ if (VCPKG_TARGET_ARCHITECTURE STREQUAL x64 OR VCPKG_TARGET_ARCHITECTURE STREQUAL
 endif()
 
 file(REMOVE_RECURSE "${SOURCE_PATH}/CMake/FindOpenCL.cmake")
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     DISABLE_PARALLEL_CONFIGURE
     OPTIONS
         -DBUILD_TESTING=OFF
@@ -151,7 +166,6 @@ vcpkg_configure_cmake(
         #-DITK_USE_SYSTEM_VXL=ON
         #-DITK_USE_SYSTEM_CASTXML=ON # needs to be added to vcpkg_find_acquire_program https://data.kitware.com/api/v1/file/hashsum/sha512/b8b6f0aff11fe89ab2fcd1949cc75f2c2378a7bc408827a004396deb5ff5a9976bffe8a597f8db1b74c886ea39eb905e610dce8f5bd7586a4d6c196d7349da8d/download
         -DITK_USE_SYSTEM_MINC=ON
-        -DITK_USE_SYSTEM_SWIG=ON
         -DITK_FORBID_DOWNLOADS=OFF # This should be turned on some day, however for now ITK does download specific versions so it shouldn't spontaneously break. Remote Modules would probably break with this!
         -DINSTALL_GTEST=OFF
         -DITK_USE_SYSTEM_GOOGLETEST=ON
@@ -177,14 +191,18 @@ vcpkg_configure_cmake(
 
     OPTIONS_DEBUG   ${OPTIONS_DEBUG}
     OPTIONS_RELEASE ${OPTIONS_RELEASE}
+    MAYBE_UNUSED_VARIABLES
+        DCMTK_USE_ICU # Used by DCMTK
+        ITK_USE_SYSTEM_GOOGLETEST
+        ITK_USE_SYSTEM_ICU # Used by DCMTK
 )
 if(BUILD_RTK) # Remote Modules are only downloaded on configure.
     # TODO: In the future try to download via vcpkg_from_github and move the files. That way patching does not need this workaround
-    vcpkg_apply_patches(SOURCE_PATH "${SOURCE_PATH}/Modules/Remote/RTK" QUIET PATCHES rtk/already_defined.patch rtk/unresolved.patch)
+    vcpkg_apply_patches(SOURCE_PATH "${SOURCE_PATH}/Modules/Remote/RTK" QUIET PATCHES rtk/already_defined.patch rtk/unresolved.patch rtk/Add-missing-include-for-Cuda.patch)
 endif()
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 vcpkg_copy_pdbs()
-vcpkg_fixup_cmake_targets()
+vcpkg_cmake_config_fixup()
 
 if(TOOL_NAMES)
     vcpkg_copy_tools(TOOL_NAMES ${TOOL_NAMES} AUTO_CLEAN)
@@ -194,5 +212,17 @@ file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/lib/cmake")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/lib/cmake")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+file(REMOVE "${CURRENT_PACKAGES_DIR}/include/ITK-5.4/vcl_where_root_dir.h")
 
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/ITK-5.4/itk_eigen.h" "include(${SOURCE_PATH}/CMake/UseITK.cmake)" "include(UseITK)")
+vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/ITK-5.4/itk_eigen.h" "message(STATUS \"From ITK: Eigen3_DIR: ${CURRENT_INSTALLED_DIR}/share/eigen3\")" "")
+
+if("rtk" IN_LIST FEATURES)
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/ITK-5.4/rtkConfiguration.h" "#define RTK_BINARY_DIR \"${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-rel/Modules/Remote/RTK\"" "")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/ITK-5.4/rtkConfiguration.h" "#define RTK_DATA_ROOT \"${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-rel/ExternalData/Modules/Remote/RTK/test\"" "")
+
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/share/itk/Modules/RTK.cmake" "${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-rel" "\${ITK_INSTALL_PREFIX}")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/share/itk/Modules/RTK.cmake" "${SOURCE_PATH}/Modules/Remote/RTK/utilities/lp_solve" "\${ITK_INSTALL_PREFIX}/include/RTK/lpsolve")
+endif()
+
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

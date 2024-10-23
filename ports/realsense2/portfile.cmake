@@ -1,13 +1,19 @@
+vcpkg_download_distfile(ARM64_DETECTION_FIX
+    URLS https://github.com/IntelRealSense/librealsense/commit/5a244052e2df7842940dfb5a9011973a09626300.patch?full_desc=1
+    FILENAME realsense2-arm64-detection-fix-5a244052e2df7842940dfb5a9011973a09626300.patch
+    SHA512 2897a55a58ec549914378213a5decd0092a527268651e7cb140ce2dad3ee99ddde2735113a448d8a191552fc32fa40a45422b274f617c98cda3d1b3ce948204b
+)
+
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO IntelRealSense/librealsense
-    REF e9f05c55f88f6876633bd59fd1cb3848da64b699 #v2.49.0
-    SHA512 dfd7012eb96f7d4a8054c8cc1141cd2c743255b7783d16565e02b2c688ea9d81cd61f3824f999c2c9d4ed1f44b3866b5bd399fab376ba8f16369989bda4bda85
+    REF "v${VERSION}"
+    SHA512 20561294da571e0e1f5f8c9ac1039828512f3361a4241e5ad320bbb684626c1e78cd18e6a6344ec80fcd86dc699742c51069bc2b6895aec1dcbd9f394d2c9998
     HEAD_REF master
     PATCHES
         fix_openni2.patch
-        fix-dependency-glfw3.patch
-        fix_config_osx.patch
+        fix-osx.patch # from https://github.com/IntelRealSense/librealsense/pull/11997
+        "${ARM64_DETECTION_FIX}"
 )
 
 file(COPY "${SOURCE_PATH}/src/win7/drivers/IntelRealSense_D400_series_win7.inf" DESTINATION "${SOURCE_PATH}")
@@ -15,7 +21,6 @@ string(COMPARE EQUAL "${VCPKG_CRT_LINKAGE}" "static" BUILD_CRT_LINKAGE)
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
-        tm2   BUILD_WITH_TM2
         tools BUILD_TOOLS
 )
 
@@ -48,15 +53,20 @@ vcpkg_cmake_configure(
 vcpkg_cmake_install()
 
 vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/realsense2)
-
+if(VCPKG_TARGET_IS_WINDOWS)
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/share/realsense2/realsense2Targets.cmake" "${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-rel" "\${_IMPORT_PREFIX}")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/share/realsense2/realsense2Targets.cmake" "${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-dbg" "\${_IMPORT_PREFIX}")
+	
+	file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/common/fw")
+	file(INSTALL "${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-rel/common/fw/fw.res" DESTINATION "${CURRENT_PACKAGES_DIR}/common/fw")
+endif()
 vcpkg_copy_pdbs()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 
 if(BUILD_TOOLS)
-    set(TOOL_NAMES)
-    list(APPEND TOOL_NAMES rs-convert rs-enumerate-devices rs-fw-logger rs-fw-update rs-record rs-terminal)
+    set(TOOL_NAMES rs-convert rs-embed rs-enumerate-devices rs-fw-logger rs-fw-update rs-record rs-terminal)
     vcpkg_copy_tools(TOOL_NAMES ${TOOL_NAMES} AUTO_CLEAN)
 endif()
 
@@ -67,5 +77,5 @@ if(BUILD_OPENNI2_BINDINGS)
     endif()
 endif()
 
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
 vcpkg_fixup_pkgconfig()

@@ -1,9 +1,10 @@
 {
   "name": "grpc",
-  "version-semver": "1.37.0",
-  "port-version": 4,
-  "description": "An RPC library and framework",
+  "version-semver": "1.60.0",
+  "port-version": 1,
+  "description": "gRPC is a modern, open source, high-performance remote procedure call (RPC) framework that can run anywhere. gRPC enables client and server applications to communicate transparently, and simplifies the building of connected systems.",
   "homepage": "https://github.com/grpc/grpc",
+  "license": "Apache-2.0",
   "dependencies": [
     "abseil",
     {
@@ -25,14 +26,20 @@
     },
     "re2",
     "upb",
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    },
     "zlib"
   ],
   "features": {
-    "absl-sync": {
-      "description": "Use abseil synchronization module"
-    },
     "codegen": {
-      "description": "Build code generator machinery"
+      "description": "Build code generator machinery",
+      "supports": "!uwp"
     }
   }
 }

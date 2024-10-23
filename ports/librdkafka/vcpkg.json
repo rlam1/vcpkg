@@ -1,18 +1,33 @@
 {
   "name": "librdkafka",
-  "version-string": "1.7.0",
-  "port-version": 2,
+  "version": "2.6.0",
   "description": "The Apache Kafka C/C++ library",
-  "homepage": "https://github.com/edenhill/librdkafka",
+  "homepage": "https://github.com/confluentinc/librdkafka",
+  "license": null,
+  "supports": "!uwp",
+  "dependencies": [
+    "lz4",
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ],
   "features": {
-    "lz4": {
-      "description": "Enable external LZ4 library support",
+    "curl": {
+      "description": "Build with curl",
       "dependencies": [
-        "lz4"
+        "curl"
       ]
     },
-    "snappy": {
-      "description": "Build with snappy"
+    "sasl": {
+      "description": "Build with sasl/gssapi",
+      "dependencies": [
+        "cyrus-sasl"
+      ]
     },
     "ssl": {
       "description": "Build with OpenSSL",

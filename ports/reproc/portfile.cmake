@@ -1,10 +1,8 @@
-vcpkg_fail_port_install(ON_TARGET "UWP")
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO DaanDeMeyer/reproc
-    REF v14.2.3
-    SHA512 acb3a0b90aca7bcfd1b0882b7094ba0f2f8dd8aa4a7c4a37d37780cebb23ef3c8842ca9a9aded337f607d832a95eed5cc7ccc120c64daef9a979a9d20aa07aad
+    REF "v${VERSION}"
+    SHA512 d6c8abfc4fbef894310f4ad6250ddf269279bce13954ba6bc0147e0bf7e08f5a5e924ba079205881d6bf1dfe865e5f4389517d6d3bbafdede24ed328c549a991
     HEAD_REF main
 )
 
@@ -26,8 +24,4 @@ foreach(TARGET reproc reproc++)
     )
 endforeach()
 
-file(
-    INSTALL "${SOURCE_PATH}/LICENSE"
-    DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}"
-    RENAME copyright
-)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

@@ -4,7 +4,7 @@ if (VCPKG_LIBRARY_LINKAGE STREQUAL static)
     set(STATIC_PATCH "001-automagically-define-modplug-static.patch")
 endif()
 
-vcpkg_from_github(ARCHIVE
+vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO Konstanty/libmodplug
     REF ${MODPLUG_HASH}
@@ -13,28 +13,29 @@ vcpkg_from_github(ARCHIVE
         ${STATIC_PATCH}
         002-detect_sinf.patch
         003-use-static-cast-for-ctype.patch
-        004-export-pkgconfig.patch  # https://github.com/Konstanty/libmodplug/pull/59
+        004-export-pkgconfig.patch
+        005-fix-install-paths.patch # https://github.com/Konstanty/libmodplug/pull/61
 )
 
-vcpkg_configure_cmake(SOURCE_PATH ${SOURCE_PATH} PREFER_NINJA)
+set(EXTRA_OPTIONS "")
 
-vcpkg_install_cmake()
-
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
-
-if(VCPKG_LIBRARY_LINKAGE STREQUAL dynamic AND VCPKG_TARGET_IS_WINDOWS)
-    if(VCPKG_TARGET_IS_MINGW)
-        set(BIN_NAME libmodplug.dll)
-    else()
-        set(BIN_NAME modplug.dll)
-    endif()
-    file(MAKE_DIRECTORY ${CURRENT_PACKAGES_DIR}/bin)
-    file(RENAME ${CURRENT_PACKAGES_DIR}/lib/${BIN_NAME} ${CURRENT_PACKAGES_DIR}/bin/${BIN_NAME})
-    file(MAKE_DIRECTORY ${CURRENT_PACKAGES_DIR}/debug/bin)
-    file(RENAME ${CURRENT_PACKAGES_DIR}/debug/lib/${BIN_NAME} ${CURRENT_PACKAGES_DIR}/debug/bin/${BIN_NAME})
-    vcpkg_copy_pdbs()
+if(VCPKG_TARGET_IS_EMSCRIPTEN)
+    list(APPEND EXTRA_OPTIONS "-DCMAKE_CXX_STANDARD=11")
+elseif(VCPKG_TARGET_IS_ANDROID)
+    list(APPEND EXTRA_OPTIONS "-DCMAKE_CXX_STANDARD=11")
 endif()
+
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS ${EXTRA_OPTIONS}
+)
+
+vcpkg_cmake_install()
+
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+
+vcpkg_copy_pdbs()
 
 vcpkg_fixup_pkgconfig()
 
-file(INSTALL ${SOURCE_PATH}/COPYING DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)

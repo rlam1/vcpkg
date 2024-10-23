@@ -5,29 +5,26 @@ endif()
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO google/sentencepiece
-    REF v0.1.95
-    SHA512 22484cf0311315e25a3184561f4e18b45286ad068bfb722c860e1b44fb16913c96d34723b486fab5e4e1e69f4b620a0e3cff410f56cb6561a67193ebaf565a31
+    REF "v${VERSION}"
+    SHA512 b4214f5bfbe2a0757794c792e87e7c53fda7e65b2511b37fc757f280bf9287ba59b5d630801e17de6058f8292a3c6433211917324cb3446a212a51735402e614
     HEAD_REF master
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DSPM_ENABLE_SHARED=OFF
+        -DSPM_USE_BUILTIN_PROTOBUF=ON
+        -DSPM_USE_EXTERNAL_ABSL=OFF
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/bin)
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/bin)
-if(NOT VCPKG_CMAKE_SYSTEM_NAME)
-   file(RENAME ${CURRENT_PACKAGES_DIR}/debug/lib/sentencepiece.lib ${CURRENT_PACKAGES_DIR}/debug/lib/sentencepieced.lib)
-   file(RENAME ${CURRENT_PACKAGES_DIR}/debug/lib/sentencepiece_train.lib ${CURRENT_PACKAGES_DIR}/debug/lib/sentencepiece_traind.lib)
-endif()
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-configure_file(${SOURCE_PATH}/LICENSE ${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright COPYONLY)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
+
+vcpkg_copy_tools(TOOL_NAMES spm_decode spm_encode spm_export_vocab spm_normalize spm_train AUTO_CLEAN)
 
 vcpkg_copy_pdbs()
 

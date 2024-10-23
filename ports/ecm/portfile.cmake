@@ -1,12 +1,11 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO KDE/extra-cmake-modules
-    REF v5.84.0
-    SHA512 d49397bcf0d49a95c86c9d9a4e653015ee8b3ef1261b2842439bba7ff3363ac06351fa2df4035c2cb36397d2fc64375a14966ada29f231df51ba26d8e196d6ef
+    REF "v${VERSION}"
+    SHA512 30f9e4d606f88c8d0e2be8f0fbba47ae25cf6e1c9716d50fc2f7845e5527d6cb4a34dfca8ec4356e8e74ce936ae252edf833b2bc545a4c85a894103dd27d8c89
     HEAD_REF master
     PATCHES
-        fix_canberra.patch
-        fix_python_version.patch # Remove on next release
+        fix_generateqmltypes.patch # https://invent.kde.org/frameworks/extra-cmake-modules/-/merge_requests/201
 )
 
 vcpkg_cmake_configure(
@@ -20,12 +19,14 @@ vcpkg_cmake_configure(
 
 vcpkg_cmake_install()
 
+vcpkg_cmake_config_fixup(CONFIG_PATH share/ECM/cmake)
+
 # Remove debug files
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug")
 
 file(COPY "${CURRENT_PORT_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
 # Handle copyright
-file(INSTALL "${SOURCE_PATH}/COPYING-CMAKE-SCRIPTS" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING-CMAKE-SCRIPTS")
 
 # Allow empty include directory
 set(VCPKG_POLICY_EMPTY_INCLUDE_FOLDER enabled)

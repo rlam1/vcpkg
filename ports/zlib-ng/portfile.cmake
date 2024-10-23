@@ -1,15 +1,15 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO zlib-ng/zlib-ng
-    REF 2.0.3
-    SHA512 e1afe91e1a8b4c54a004b672f539ae68f7dc1f1b08ba93514c0de674230354c944d496753f00ad272f16ef322705f275b5b72dac6c2a757ec741ef3f1ea1d59a
-    HEAD_REF master
+    REF "${VERSION}"
+    SHA512 9212d87c63a2da4e5355a7a1c75380aeba40fbd0ea3d71d3784cb3eac94237f9bea2a1b7993a08f39d4197725c4c133087d3a9d213d3944aa48a7559de2be920
+    HEAD_REF develop
 )
 
 vcpkg_cmake_configure(
-    SOURCE_PATH ${SOURCE_PATH}
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        -DZLIB_FULL_VERSION=2.0.3
+        "-DZLIB_FULL_VERSION=${ZLIB_FULL_VERSION}"
         -DZLIB_ENABLE_TESTS=OFF
         -DWITH_NEW_STRATEGIES=ON
     OPTIONS_RELEASE
@@ -17,11 +17,37 @@ vcpkg_cmake_configure(
 )
 vcpkg_cmake_install()
 vcpkg_copy_pdbs()
+
+# Condition in `WIN32`, from https://github.com/zlib-ng/zlib-ng/blob/2.1.5/CMakeLists.txt#L1081-L1100
+# (dynamic) for `zlib` or (static `MSVC) for `zlibstatic` or default `z`
+# i.e. (windows) and not (static mingw) https://learn.microsoft.com/en-us/vcpkg/maintainers/variables#vcpkg_target_is_system
+if(VCPKG_TARGET_IS_WINDOWS AND (NOT (VCPKG_LIBRARY_LINKAGE STREQUAL static AND VCPKG_TARGET_IS_MINGW)))
+    set(_port_suffix)
+    if(ZLIB_COMPAT)
+        set(_port_suffix "")
+    else()
+        set(_port_suffix "-ng")
+    endif()
+
+    set(_port_output_name)
+    if(VCPKG_LIBRARY_LINKAGE STREQUAL "dynamic")
+        set(_port_output_name "zlib${_port_suffix}")
+    else()
+        set(_port_output_name "zlibstatic${_port_suffix}")
+    endif()
+
+    # CMAKE_DEBUG_POSTFIX from https://github.com/zlib-ng/zlib-ng/blob/2.1.5/CMakeLists.txt#L494
+    if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "release")
+        vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/lib/pkgconfig/zlib${_port_suffix}.pc" " -lz${_port_suffix}" " -l${_port_output_name}")
+    endif()
+    if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "debug")
+        vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/zlib${_port_suffix}.pc" " -lz${_port_suffix}" " -l${_port_output_name}d")
+    endif()
+endif()
+
 vcpkg_fixup_pkgconfig()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/share
-                    ${CURRENT_PACKAGES_DIR}/debug/include
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share"
+                    "${CURRENT_PACKAGES_DIR}/debug/include"
 )
-file(INSTALL ${SOURCE_PATH}/LICENSE.md
-     DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright
-)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.md")
